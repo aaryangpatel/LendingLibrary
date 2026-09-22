@@ -1,0 +1,42 @@
+{% if books %}
+  <ul class="book-grid">
+    {% for book in books %}
+      <li>
+        <a class="book-card" href="/book/{{ book.id }}">
+          <div class="book-cover">
+            {% if book.cover_url %}
+              <img src="{{ book.cover_url }}" alt="" referrerpolicy="no-referrer" decoding="async" />
+            {% else %}
+              <div class="book-cover-fallback" aria-hidden="true">{{ book.title[:1] }}</div>
+            {% endif %}
+          </div>
+          <div class="book-card-body">
+            <h3>{{ book.title }}</h3>
+            <p class="book-authors">{{ authors_display(book.authors) }}</p>
+            {% if book.available_count > 0 %}
+              <p class="book-status is-available">
+                {{ book.available_count }} available
+              </p>
+            {% else %}
+              <p class="book-status is-out">Currently out</p>
+            {% endif %}
+          </div>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty-state">
+    {% if q %}
+      <h2>No titles match this search</h2>
+      <p>Try a shorter title, an author name, or clear the search.</p>
+    {% elif pickup_mode %}
+      <h2>Nothing is on the shelf right now</h2>
+      <p>When a student drops off a book, it will appear here for pickup.</p>
+    {% else %}
+      <h2>No books have been dropped off yet</h2>
+      <p>Be the first. Scan a barcode or type a title; the book will appear in this catalog immediately.</p>
+    {% endif %}
+    <a class="btn btn-solid" href="/drop-off">Drop off a book</a>
+  </div>
+{% endif %}

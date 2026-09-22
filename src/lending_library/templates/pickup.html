@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Pick up a book{% endblock %}
+{% block content %}
+  <section class="page-intro">
+    <h1>Pick up a book</h1>
+    <p>
+      These titles currently have at least one copy on the lending-library shelf.
+      Taking a book is on the honor system: mark it taken so the catalog stays accurate.
+    </p>
+    <form
+      class="catalog-search compact"
+      method="get"
+      action="/pickup"
+      hx-get="/pickup"
+      hx-target="#catalog-results"
+      hx-push-url="true"
+      hx-trigger="submit, keyup delay:300ms from:input[name='q']"
+    >
+      <label class="sr-only" for="pickup-q">Search available books</label>
+      <input
+        id="pickup-q"
+        type="search"
+        name="q"
+        value="{{ q }}"
+        placeholder="Title, author, or ISBN"
+        autocomplete="off"
+      />
+      <button class="btn btn-solid" type="submit">Search</button>
+    </form>
+  </section>
+  <section class="section">
+    <div id="catalog-results">
+      {% include "partials/book_grid.html" %}
+    </div>
+  </section>
+{% endblock %}

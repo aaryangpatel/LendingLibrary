@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Academy Lending Library Catalog{% endblock %}
+{% block content %}
+  <section class="hero">
+    <div class="hero-card">
+      <h1>Academy Lending Library Catalog</h1>
+      <form
+        class="catalog-search"
+        method="get"
+        action="/"
+        hx-get="/"
+        hx-target="#catalog-results"
+        hx-push-url="true"
+        hx-trigger="submit, keyup delay:300ms from:input[name='q'], change from:input[name='available']"
+      >
+        <label class="sr-only" for="catalog-q">Search for books</label>
+        <input
+          id="catalog-q"
+          type="search"
+          name="q"
+          value="{{ q }}"
+          placeholder="Title, author, or ISBN"
+          autocomplete="off"
+        />
+        <button class="btn btn-solid" type="submit">Search</button>
+        <label class="available-filter">
+          <input type="checkbox" name="available" value="1" {% if available_only %}checked{% endif %} />
+          On the shelf now
+        </label>
+      </form>
+      <p class="hero-note">
+        Search for books left by other students. Drop off a title you no longer need; take one you want to read.
+      </p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="section-heading">
+      <h2>On the shelf</h2>
+      <p>Recently dropped off and still available for pickup.</p>
+    </div>
+    <div id="catalog-results">
+      {% include "partials/book_grid.html" %}
+    </div>
+  </section>
+{% endblock %}

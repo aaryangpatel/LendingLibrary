@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ book.title }}{% endblock %}
+{% block content %}
+  <article class="book-detail">
+    <div class="book-detail-cover">
+      {% if book.cover_url %}
+        <img src="{{ book.cover_url }}" alt="Cover of {{ book.title }}" referrerpolicy="no-referrer" decoding="async" />
+      {% else %}
+        <div class="book-cover-fallback large" aria-hidden="true">{{ book.title[:1] }}</div>
+      {% endif %}
+    </div>
+    <div class="book-detail-body">
+      <p class="eyebrow">Lending Library</p>
+      <h1>{{ book.title }}</h1>
+      <p class="book-authors">{{ authors_display(book.authors) }}</p>
+      <dl class="meta-list">
+        {% if book.isbn %}
+          <div>
+            <dt>ISBN</dt>
+            <dd>{{ book.isbn }}</dd>
+          </div>
+        {% endif %}
+        {% if book.publish_year %}
+          <div>
+            <dt>Year</dt>
+            <dd>{{ book.publish_year }}</dd>
+          </div>
+        {% endif %}
+        <div>
+          <dt>On the shelf</dt>
+          <dd>{{ book.available_count }} of {{ book.total_count }} copies</dd>
+        </div>
+      </dl>
+      {% if book.subjects %}
+        <ul class="subject-list">
+          {% for subject in book.subjects %}
+            <li>{{ subject }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if book.available_count > 0 %}
+        <form method="post" action="/book/{{ book.id }}/pickup">
+          <button class="btn btn-solid" type="submit">I am taking this book</button>
+        </form>
+        <p class="fine-print">Please take only one copy and leave the shelf as you found it.</p>
+      {% else %}
+        <p class="notice">This title is not on the shelf right now.</p>
+      {% endif %}
+      {% if staff_enabled %}
+        <details class="staff-panel">
+          <summary>Staff: hide this title</summary>
+          <form method="post" action="/book/{{ book.id }}/hide">
+            <label for="staff-password">Staff password</label>
+            <input id="staff-password" type="password" name="password" autocomplete="current-password" required />
+            <button class="btn btn-outline" type="submit">Hide from catalog</button>
+          </form>
+        </details>
+      {% endif %}
+    </div>
+  </article>
+{% endblock %}
