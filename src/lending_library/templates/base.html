@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Lending Library{% endblock %} · Phillips Exeter Academy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/css/style.css?v=4" />
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="wordmark" href="/">
+          <span class="wordmark-academy">Phillips Exeter Academy</span>
+          <span class="wordmark-rule" aria-hidden="true"></span>
+          <span class="wordmark-library">Lending Library</span>
+        </a>
+        <div class="header-actions">
+          <a class="btn btn-outline" href="/drop-off">Drop off a book</a>
+          <a class="btn btn-outline" href="/pickup">Pick up a book</a>
+        </div>
+      </div>
+    </header>
+    <nav class="site-nav" aria-label="Primary">
+      <div class="nav-inner">
+        <a href="/" class="{% if active == 'catalog' %}is-active{% endif %}">Catalog</a>
+        <a href="/drop-off" class="{% if active == 'drop-off' %}is-active{% endif %}">Drop Off</a>
+        <a href="/pickup" class="{% if active == 'pickup' %}is-active{% endif %}">Pick Up</a>
+      </div>
+    </nav>
+    <main id="main">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div>
+          <p class="footer-title">Class of 1945 Library</p>
+          <p>20 Main Street<br />Exeter, NH 03833</p>
+        </div>
+        <div>
+          <p>Student book exchange. Leave a book you no longer need. Take a book you want to read. No account required.</p>
+        </div>
+      </div>
+    </footer>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
