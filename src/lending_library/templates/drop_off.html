@@ -5,7 +5,8 @@
     <h1>Drop off a book</h1>
     <p>
       Point the camera at the barcode on the back of the book. If there is no barcode,
-      type the title or ISBN. Confirm the match before the book is added to the catalog.
+      type the title or ISBN. If the book is not in the catalog, add the title and author.
+      Confirm the match before the book is added.
     </p>
   </section>
 
@@ -52,9 +53,26 @@
     </div>
 
     <div id="lookup-results" class="lookup-results" hidden></div>
+
+    <div id="custom-add" class="custom-add" hidden>
+      <h2>Add a book that is not in the catalog</h2>
+      <p class="panel-lead">Type the title and author, then add it to the shelf.</p>
+      <form id="custom-form" class="manual-form">
+        <div class="field">
+          <label for="custom-title">Title</label>
+          <input id="custom-title" name="title" autocomplete="off" required />
+        </div>
+        <div class="field">
+          <label for="custom-author">Author</label>
+          <input id="custom-author" name="author" autocomplete="off" required />
+        </div>
+        <button class="btn btn-solid" type="submit">Add to catalog</button>
+      </form>
+      <p class="status-line" id="custom-status"></p>
+    </div>
   </section>
 {% endblock %}
 {% block scripts %}
   <script src="https://unpkg.com/@zxing/library@0.21.3"></script>
-  <script src="/static/js/dropoff.js?v=3"></script>
+  <script src="/static/js/dropoff.js?v=5"></script>
 {% endblock %}

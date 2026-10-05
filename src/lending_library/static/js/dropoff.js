@@ -10,7 +10,10 @@
 
 const scanStatus = document.getElementById("scan-status");
 const manualStatus = document.getElementById("manual-status");
+const customStatus = document.getElementById("custom-status");
 const resultsRoot = document.getElementById("lookup-results");
+const customAdd = document.getElementById("custom-add");
+const customForm = document.getElementById("custom-form");
 const video = document.getElementById("barcode-video");
 const startScanButton = document.getElementById("start-scan");
 const stopScanButton = document.getElementById("stop-scan");
@@ -109,16 +112,20 @@ function renderCandidates(books, heading, append, hasMore) {
   }
   const startIndex = displayedBooks.length;
   displayedBooks = displayedBooks.concat(books);
+  if (books.length && !append) {
+    customAdd.hidden = true;
+  }
   if (!displayedBooks.length) {
     resultsRoot.innerHTML =
-      "<div class='empty-state'><h2>No match found</h2><p>Try typing the title, or scan the barcode on the back of the book.</p></div>";
+      "<div class='empty-state'><h2>No match found</h2><p>Add the title and author below, or try another search.</p></div>";
+    showCustomAdd();
     return;
   }
   if (!append) {
     const items = displayedBooks
       .map((book, index) => candidateItemHtml(book, index))
       .join("");
-    resultsRoot.innerHTML = `<h2>${escapeHtml(heading)}</h2><ul class="candidate-list">${items}</ul><div class="lookup-more" hidden><button type="button" class="btn btn-outline" id="load-more">Load more titles</button></div>`;
+    resultsRoot.innerHTML = `<h2>${escapeHtml(heading)}</h2><ul class="candidate-list">${items}</ul><div class="lookup-more" hidden><button type="button" class="btn btn-outline" id="load-more">Load more titles</button></div><p class="custom-add-launch"><button type="button" class="btn btn-outline" id="show-custom-add">None of these? Add it yourself</button></p>`;
     const loadMoreButton = document.getElementById("load-more");
     loadMoreButton.addEventListener("click", () => {
       const work = lookupSearch(searchParams, manualStatus, true);
@@ -126,6 +133,9 @@ function renderCandidates(books, heading, append, hasMore) {
         () => undefined,
         () => setStatus(manualStatus, "Could not load more titles. Try again.")
       );
+    });
+    document.getElementById("show-custom-add").addEventListener("click", () => {
+      showCustomAdd();
     });
   } else {
     const list = resultsRoot.querySelector(".candidate-list");
@@ -201,9 +211,10 @@ async function lookupIsbn(isbn) {
   setStatus(scanStatus, `Looking up ISBN ${isbn}…`);
   const payload = await api(`/api/lookup/isbn/${encodeURIComponent(isbn)}`);
   if (!payload.ok || !payload.book) {
-    setStatus(scanStatus, "No catalog match for that ISBN. Try the title instead.");
+    setStatus(scanStatus, "No catalog match for that ISBN. Add it below, or try the title.");
     showPanel("manual");
     document.getElementById("manual-isbn").value = isbn;
+    showCustomAdd();
     return;
   }
   stopCamera();
@@ -398,3 +409,47 @@ resultsRoot.addEventListener("click", (event) => {
 });
 
 window.addEventListener("pagehide", stopCamera);
+
+/**
+ * Reveal the manual add form and copy title/author from the search fields.
+ *
+ * @returns {void}
+ */
+function showCustomAdd() {
+  customAdd.hidden = false;
+  const title = document.getElementById("manual-title").value.trim();
+  const author = document.getElementById("manual-author").value.trim();
+  if (title) {
+    document.getElementById("custom-title").value = title;
+  }
+  if (author) {
+    document.getElementById("custom-author").value = author;
+  }
+  customAdd.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+customForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const title = document.getElementById("custom-title").value.trim();
+  const author = document.getElementById("custom-author").value.trim();
+  if (!title || !author) {
+    setStatus(customStatus, "Enter a title and author.");
+    return;
+  }
+  setStatus(customStatus, "Saving to the catalog…");
+  const work = api("/api/drop-off/custom", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, author }),
+  });
+  work.then(
+    (payload) => {
+      if (!payload.ok) {
+        setStatus(customStatus, payload.error || "Could not save this book.");
+        return;
+      }
+      window.location.href = `/book/${payload.book_id}`;
+    },
+    () => setStatus(customStatus, "Could not save this book. Check the connection and try again.")
+  );
+});
