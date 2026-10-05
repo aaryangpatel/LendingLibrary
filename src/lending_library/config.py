@@ -28,6 +28,9 @@ class Settings:
         """Load environment values into typed attributes."""
         self.firebase_project_id = os.getenv("FIREBASE_PROJECT_ID", "")
         self.firebase_service_account = os.getenv("FIREBASE_SERVICE_ACCOUNT", "")
+        self.firebase_service_account_json = os.getenv(
+            "FIREBASE_SERVICE_ACCOUNT_JSON", ""
+        )
         self.staff_password = os.getenv("STAFF_PASSWORD", "")
         self.google_books_api_key = os.getenv("GOOGLE_BOOKS_API_KEY", "")
         self.site_contact = os.getenv(

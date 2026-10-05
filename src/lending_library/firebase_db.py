@@ -7,8 +7,8 @@ Usage:
     catalog = firebase_db.list_catalog(query="hobbit", available_only=True)
     book = firebase_db.get_book(book_id)
 
-The FastAPI process is the only Firestore client. It authenticates with the
-service-account JSON path in FIREBASE_SERVICE_ACCOUNT.
+The FastAPI process is the only Firestore client. It authenticates with
+FIREBASE_SERVICE_ACCOUNT (file path) or FIREBASE_SERVICE_ACCOUNT_JSON.
 """
 
 import json
@@ -60,8 +60,23 @@ def connection_info() -> dict[str, str]:
     return dict(_connection)
 
 
+def _service_account_info() -> dict:
+    """Load the Firebase service-account dict from env JSON or a key file.
+
+    Returns:
+        Parsed service-account object, including project_id.
+    """
+    inline = settings.firebase_service_account_json.strip()
+    if inline:
+        return json.loads(inline)
+    return json.loads(_service_account_path().read_text())
+
+
 def init_client() -> firestore.Client:
-    """Create the process-wide Firestore client from the service-account file.
+    """Create the process-wide Firestore client from the service account.
+
+    Prefers FIREBASE_SERVICE_ACCOUNT_JSON (for hosts such as Cloud Run),
+    then FIREBASE_SERVICE_ACCOUNT as a local file path.
 
     Returns:
         Authenticated Firestore client for the Firebase project.
@@ -69,7 +84,7 @@ def init_client() -> firestore.Client:
     global _client
     if _client is not None:
         return _client
-    info = json.loads(_service_account_path().read_text())
+    info = _service_account_info()
     credentials = service_account.Credentials.from_service_account_info(info)
     project_id = str(info.get("project_id") or settings.firebase_project_id)
     _client = firestore.Client(project=project_id, credentials=credentials)
