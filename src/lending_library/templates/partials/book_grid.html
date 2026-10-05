@@ -13,13 +13,9 @@
           <div class="book-card-body">
             <h3>{{ book.title }}</h3>
             <p class="book-authors">{{ authors_display(book.authors) }}</p>
-            {% if book.available_count > 0 %}
-              <p class="book-status is-available">
-                {{ book.available_count }} available
-              </p>
-            {% else %}
-              <p class="book-status is-out">Currently out</p>
-            {% endif %}
+            <p class="book-status is-available">
+              {{ book.available_count }} available
+            </p>
           </div>
         </a>
       </li>

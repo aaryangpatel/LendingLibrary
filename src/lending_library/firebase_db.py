@@ -165,12 +165,16 @@ def _matches_query(book: CatalogBook, query: str) -> bool:
 def list_catalog(query: str = "", available_only: bool = False) -> list[CatalogBook]:
     """Load books and copies, then join copy counts in process.
 
+    Books with no available copies are deleted and omitted. Pickup is not a
+    loan, so taken titles do not remain in the catalog as currently out.
+
     Parameters:
         query: Optional case-insensitive filter on title, author, ISBN, subject.
         available_only: When True, omit titles with zero available copies.
+            Zero-available titles are already deleted, so this is a no-op filter.
 
     Returns:
-        Catalog rows with hidden books removed, sorted by title.
+        Catalog rows with hidden and empty books removed, sorted by title.
     """
     client = get_client()
     book_rows = [
@@ -202,7 +206,8 @@ def list_catalog(query: str = "", available_only: bool = False) -> list[CatalogB
         book["available_count"] = tally["available"]
         book["taken_count"] = tally["taken"]
         book["total_count"] = tally["total"]
-        if available_only and book["available_count"] < 1:
+        if book["available_count"] < 1:
+            delete_book_and_copies(book["id"])
             continue
         if not _matches_query(book, query):
             continue
@@ -218,7 +223,8 @@ def get_book(book_id: str) -> CatalogBook | None:
         book_id: Firestore books document id.
 
     Returns:
-        CatalogBook, or None if the document does not exist or is hidden.
+        CatalogBook, or None if the document does not exist, is hidden, or
+        has no available copies. Empty books are deleted.
     """
     client = get_client()
     snapshot = client.collection(COLLECTION_BOOKS).document(book_id).get()
@@ -246,6 +252,9 @@ def get_book(book_id: str) -> CatalogBook | None:
     book["available_count"] = available
     book["taken_count"] = taken
     book["total_count"] = total
+    if available < 1:
+        delete_book_and_copies(book_id)
+        return None
     return book
 
 
@@ -351,14 +360,32 @@ def add_drop_off(record: BookRecord) -> dict[str, str]:
     return {"book_id": book_id, "copy_id": copy_ref.id}
 
 
+def delete_book_and_copies(book_id: str) -> None:
+    """Delete a book document and every copy that belongs to it.
+
+    Parameters:
+        book_id: Firestore books document id.
+    """
+    client = get_client()
+    copies = client.collection(COLLECTION_COPIES).where(
+        filter=FieldFilter("book_id", "==", book_id)
+    ).stream()
+    for copy_snapshot in copies:
+        copy_snapshot.reference.delete()
+    client.collection(COLLECTION_BOOKS).document(book_id).delete()
+
+
 def take_available_copy(book_id: str) -> str | None:
-    """Mark one available copy of a book as taken.
+    """Remove one available copy. Delete the book when none remain.
+
+    Pickup is not a loan. The taken copy is deleted. If that was the last
+    available copy, the book document and leftover copies are deleted too.
 
     Parameters:
         book_id: Firestore books document id.
 
     Returns:
-        The copy document id that was taken, or None if none are available.
+        The copy document id that was removed, or None if none are available.
     """
     client = get_client()
     copies = (
@@ -374,21 +401,30 @@ def take_available_copy(book_id: str) -> str | None:
         break
     if copy_snapshot is None:
         return None
-    copy_snapshot.reference.update(
-        {
-            "status": STATUS_TAKEN,
-            "taken_at": _now(),
-        }
-    )
+    copy_id = copy_snapshot.id
     client.collection(COLLECTION_EVENTS).document().set(
         {
             "type": "pickup",
             "book_id": book_id,
-            "copy_id": copy_snapshot.id,
+            "copy_id": copy_id,
             "created_at": _now(),
         }
     )
-    return copy_snapshot.id
+    copy_snapshot.reference.delete()
+    remaining = (
+        client.collection(COLLECTION_COPIES)
+        .where(filter=FieldFilter("book_id", "==", book_id))
+        .where(filter=FieldFilter("status", "==", STATUS_AVAILABLE))
+        .limit(1)
+        .stream()
+    )
+    still_available = False
+    for _snapshot in remaining:
+        still_available = True
+        break
+    if not still_available:
+        delete_book_and_copies(book_id)
+    return copy_id
 
 
 def hide_book(book_id: str) -> bool:
