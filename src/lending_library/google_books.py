@@ -94,19 +94,21 @@ def _record_from_volume(item: dict[str, Any]) -> BookRecord | None:
     )
 
 
-def _volumes(query: str, limit: int) -> list[BookRecord]:
+def _volumes(query: str, limit: int, offset: int = 0) -> list[BookRecord]:
     """Run a Google Books volumes search and normalize results.
 
     Parameters:
         query: Google Books `q` parameter, including fielded prefixes.
-        limit: Maximum number of records to return.
+        limit: Maximum number of records to return (1-40).
+        offset: Google Books `startIndex` for later result pages.
 
     Returns:
         A list of BookRecord values, possibly empty.
     """
     params = {
         "q": query,
-        "maxResults": str(max(1, min(limit, 8))),
+        "maxResults": str(max(1, min(limit, 40))),
+        "startIndex": str(max(0, offset)),
         "printType": "books",
     }
     url = _with_key(f"{VOLUMES_API}?{urlencode(params)}")
@@ -147,6 +149,7 @@ def search_books(
     title: str = "",
     author: str = "",
     limit: int = 5,
+    offset: int = 0,
 ) -> list[BookRecord]:
     """Search Google Books by title, author, or free text.
 
@@ -154,7 +157,8 @@ def search_books(
         query: Unfielded search string.
         title: Title words, mapped to intitle:.
         author: Author words, mapped to inauthor:.
-        limit: Maximum number of records to return.
+        limit: Maximum number of records to return (1-40).
+        offset: Number of Google Books hits to skip.
 
     Returns:
         A list of BookRecord values, possibly empty.
@@ -168,4 +172,4 @@ def search_books(
         parts.append(query.strip())
     if not parts:
         return []
-    return _volumes(" ".join(parts), limit=limit)
+    return _volumes(" ".join(parts), limit=limit, offset=offset)

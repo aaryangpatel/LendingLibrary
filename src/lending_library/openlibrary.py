@@ -123,6 +123,7 @@ def search_books(
     title: str = "",
     author: str = "",
     limit: int = 5,
+    offset: int = 0,
 ) -> list[BookRecord]:
     """Search Open Library by free text, title, and/or author.
 
@@ -130,13 +131,15 @@ def search_books(
         query: Unfielded search string, used when title is empty.
         title: Title words to require.
         author: Author name words to require.
-        limit: Maximum number of records to return (1-8).
+        limit: Maximum number of records to return (1-40).
+        offset: Number of Open Library hits to skip.
 
     Returns:
         A list of BookRecord values, possibly empty.
     """
     params: dict[str, str] = {
-        "limit": str(max(1, min(limit, 8))),
+        "limit": str(max(1, min(limit, 40))),
+        "offset": str(max(0, offset)),
         "fields": "key,title,author_name,isbn,cover_i,first_publish_year,subject",
     }
     if title.strip():
