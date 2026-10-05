@@ -4,9 +4,27 @@
   <section class="page-intro">
     <h1>Pick up a book</h1>
     <p>
-      These titles currently have at least one copy on the lending-library shelf.
-      Taking a book is on the honor system: mark it taken so the catalog stays accurate.
+      Scan the barcode on the back of the book to remove it from the catalog,
+      or choose a title from the list.
     </p>
+  </section>
+
+  <section class="intake">
+    <div class="intake-panel is-active">
+      <p class="panel-lead">Point the camera at the ISBN barcode. A match is removed from the catalog.</p>
+      <div class="scanner-frame">
+        <video id="pickup-video" autoplay muted playsinline></video>
+        <div class="scanner-overlay" aria-hidden="true"></div>
+      </div>
+      <div class="panel-actions">
+        <button type="button" class="btn btn-solid" id="pickup-start-scan">Start camera</button>
+        <button type="button" class="btn btn-outline" id="pickup-stop-scan" hidden>Stop camera</button>
+      </div>
+      <p class="status-line" id="pickup-scan-status"></p>
+    </div>
+  </section>
+
+  <section class="section">
     <form
       class="catalog-search compact"
       method="get"
@@ -27,10 +45,12 @@
       />
       <button class="btn btn-solid" type="submit">Search</button>
     </form>
-  </section>
-  <section class="section">
     <div id="catalog-results">
       {% include "partials/book_grid.html" %}
     </div>
   </section>
+{% endblock %}
+{% block scripts %}
+  <script src="https://unpkg.com/@zxing/library@0.21.3"></script>
+  <script src="/static/js/pickup.js?v=1"></script>
 {% endblock %}
