@@ -1,7 +1,8 @@
 /**
  * Pickup barcode scanner for the Exeter lending library.
  *
- * Scans an ISBN on /pickup and removes that title from the catalog.
+ * Controls search vs barcode scan on /pickup. Search is the default.
+ * Scanning an ISBN removes that title from the catalog.
  *
  * Usage:
  *   Included by pickup.html after the ZXing script.
@@ -18,6 +19,26 @@ let barcodeDetector = null;
 let zxingReader = null;
 let lastIsbn = "";
 let removing = false;
+
+/**
+ * Switch the visible pickup panel and matching tab.
+ *
+ * @param {string} panelName - search or scan.
+ * @returns {void}
+ */
+function showPanel(panelName) {
+  document.querySelectorAll(".method-tab").forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.panel === panelName);
+  });
+  document.querySelectorAll(".intake-panel").forEach((panel) => {
+    const active = panel.dataset.panel === panelName;
+    panel.classList.toggle("is-active", active);
+    panel.hidden = !active;
+  });
+  if (panelName !== "scan") {
+    stopCamera();
+  }
+}
 
 /**
  * Write a short status message next to the pickup scanner.
@@ -159,6 +180,10 @@ startScanButton.addEventListener("click", () => {
 stopScanButton.addEventListener("click", () => {
   stopCamera();
   setStatus("Camera stopped.");
+});
+
+document.querySelectorAll(".method-tab").forEach((tab) => {
+  tab.addEventListener("click", () => showPanel(tab.dataset.panel));
 });
 
 window.addEventListener("pagehide", stopCamera);

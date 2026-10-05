@@ -406,6 +406,11 @@ main {
   max-width: 42rem;
 }
 
+.intake-panel .catalog-search.compact {
+  margin-top: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
 .book-detail {
   margin: 2rem auto 3rem;
   display: grid;

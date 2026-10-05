@@ -4,14 +4,51 @@
   <section class="page-intro">
     <h1>Pick up a book</h1>
     <p>
-      Scan the barcode on the back of the book to remove it from the catalog,
-      or choose a title from the list.
+      Search for a title on the shelf. If you already have the book, switch to
+      Scan barcode and point the camera at the ISBN. Taking a book removes it
+      from the catalog.
     </p>
   </section>
 
   <section class="intake">
-    <div class="intake-panel is-active">
-      <p class="panel-lead">Point the camera at the ISBN barcode. A match is removed from the catalog.</p>
+    <div class="intake-methods" role="tablist" aria-label="Pick-up methods">
+      <button type="button" class="method-tab is-active" data-panel="search" id="tab-search">
+        Search titles
+      </button>
+      <button type="button" class="method-tab" data-panel="scan" id="tab-scan">
+        Scan barcode
+      </button>
+    </div>
+
+    <div class="intake-panel is-active" id="panel-search" data-panel="search">
+      <p class="panel-lead">Type a title, author, or ISBN. Open a book to take it.</p>
+      <form
+        class="catalog-search compact"
+        method="get"
+        action="/pickup"
+        hx-get="/pickup"
+        hx-target="#catalog-results"
+        hx-push-url="true"
+        hx-trigger="submit, keyup delay:300ms from:input[name='q']"
+      >
+        <label class="sr-only" for="pickup-q">Search available books</label>
+        <input
+          id="pickup-q"
+          type="search"
+          name="q"
+          value="{{ q }}"
+          placeholder="Title, author, or ISBN"
+          autocomplete="off"
+        />
+        <button class="btn btn-solid" type="submit">Search</button>
+      </form>
+      <div id="catalog-results">
+        {% include "partials/book_grid.html" %}
+      </div>
+    </div>
+
+    <div class="intake-panel" id="panel-scan" data-panel="scan" hidden>
+      <p class="panel-lead">Use the barcode on the back of the book. A match is removed from the catalog.</p>
       <div class="scanner-frame">
         <video id="pickup-video" autoplay muted playsinline></video>
         <div class="scanner-overlay" aria-hidden="true"></div>
@@ -23,34 +60,8 @@
       <p class="status-line" id="pickup-scan-status"></p>
     </div>
   </section>
-
-  <section class="section">
-    <form
-      class="catalog-search compact"
-      method="get"
-      action="/pickup"
-      hx-get="/pickup"
-      hx-target="#catalog-results"
-      hx-push-url="true"
-      hx-trigger="submit, keyup delay:300ms from:input[name='q']"
-    >
-      <label class="sr-only" for="pickup-q">Search available books</label>
-      <input
-        id="pickup-q"
-        type="search"
-        name="q"
-        value="{{ q }}"
-        placeholder="Title, author, or ISBN"
-        autocomplete="off"
-      />
-      <button class="btn btn-solid" type="submit">Search</button>
-    </form>
-    <div id="catalog-results">
-      {% include "partials/book_grid.html" %}
-    </div>
-  </section>
 {% endblock %}
 {% block scripts %}
   <script src="https://unpkg.com/@zxing/library@0.21.3"></script>
-  <script src="/static/js/pickup.js?v=1"></script>
+  <script src="/static/js/pickup.js?v=2"></script>
 {% endblock %}
