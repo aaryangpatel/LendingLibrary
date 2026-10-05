@@ -557,6 +557,22 @@ main {
   margin-top: 1rem;
 }
 
+.custom-add {
+  margin-top: 1.25rem;
+  background: var(--paper);
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+}
+
+.custom-add h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+.custom-add-launch {
+  margin: 1rem 0 0;
+}
+
 .manual-form {
   display: grid;
   gap: 0.85rem;

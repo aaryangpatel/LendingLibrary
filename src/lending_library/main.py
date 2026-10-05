@@ -15,6 +15,9 @@ JSON API:
     GET  /api/lookup/isbn/{isbn}
     GET  /api/lookup/search
     POST /api/drop-off
+    POST /api/drop-off/custom
+    GET  /book/{id}/cover
+    POST /api/pickup/isbn/{isbn}
     POST /api/books/{id}/pickup
     POST /api/books/{id}/hide
 """
@@ -23,7 +26,7 @@ import hashlib
 import hmac
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -31,6 +34,7 @@ from pydantic import BaseModel, Field
 from lending_library import firebase_db
 from lending_library.catalog_lookup import lookup_by_isbn, lookup_by_search
 from lending_library.config import PACKAGE_DIR, settings
+from lending_library.isbn import normalize_isbn
 from lending_library.models import authors_display, record_from_mapping
 
 
@@ -66,6 +70,18 @@ class DropOffBody(BaseModel):
     subjects: list[str] = Field(default_factory=list)
     publish_year: int | None = None
     source: str = "openlibrary"
+
+
+class CustomDropOffBody(BaseModel):
+    """JSON body for a student-entered title that is not in the lookup APIs.
+
+    Parameters:
+        title: Typed book title. Required.
+        author: Typed author name. Required.
+    """
+
+    title: str = Field(min_length=1, max_length=400)
+    author: str = Field(min_length=1, max_length=400)
 
 
 class StaffHideBody(BaseModel):
@@ -225,6 +241,22 @@ def drop_off_page(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/book/{book_id}/cover")
+def book_cover(book_id: str) -> Response:
+    """Return the stored JPEG cover for a manually added book.
+
+    Parameters:
+        book_id: Firestore books document id.
+
+    Returns:
+        JPEG response, or 404 when no cover is stored.
+    """
+    jpeg = firebase_db.get_cover_jpeg(book_id)
+    if jpeg is None:
+        return Response(status_code=404)
+    return Response(content=jpeg, media_type="image/jpeg")
+
+
 @app.get("/book/{book_id}", response_class=HTMLResponse)
 def book_detail_page(request: Request, book_id: str) -> HTMLResponse:
     """Render one title with copy counts, pickup, and staff hide.
@@ -310,6 +342,51 @@ def api_drop_off(body: DropOffBody) -> JSONResponse:
         )
     created = firebase_db.add_drop_off(record)
     return JSONResponse({"ok": True, **created})
+
+
+@app.post("/api/drop-off/custom")
+def api_drop_off_custom(body: CustomDropOffBody) -> JSONResponse:
+    """Save a student-entered title and author with no cover photo.
+
+    Parameters:
+        body: Title and author typed on the drop-off page.
+
+    Returns:
+        JSON `{ok, book_id, copy_id}` or 400 when the form is incomplete.
+    """
+    clean_title = body.title.strip()
+    clean_author = body.author.strip()
+    if not clean_title or not clean_author:
+        return JSONResponse(
+            {"ok": False, "error": "Title and author are required."},
+            status_code=400,
+        )
+    created = firebase_db.add_manual_drop_off(clean_title, [clean_author])
+    return JSONResponse({"ok": True, **created})
+
+
+@app.post("/api/pickup/isbn/{isbn}")
+def api_pickup_isbn(isbn: str) -> JSONResponse:
+    """Remove one catalog copy that matches a scanned ISBN.
+
+    Parameters:
+        isbn: ISBN-10, ISBN-13, or barcode text.
+
+    Returns:
+        JSON `{ok, book_id, copy_id, title}` or an error when it is not on the shelf.
+    """
+    if normalize_isbn(isbn) is None:
+        return JSONResponse(
+            {"ok": False, "error": "That barcode is not a valid ISBN."},
+            status_code=400,
+        )
+    taken = firebase_db.take_available_copy_by_isbn(isbn)
+    if taken is None:
+        return JSONResponse(
+            {"ok": False, "error": "That ISBN is not on the shelf."},
+            status_code=404,
+        )
+    return JSONResponse({"ok": True, **taken})
 
 
 @app.post("/api/books/{book_id}/pickup")

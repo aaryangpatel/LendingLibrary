@@ -20,6 +20,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 from google.oauth2 import service_account
 
 from lending_library.config import PROJECT_ROOT, settings
+from lending_library.isbn import normalize_isbn
 from lending_library.models import BookRecord, CatalogBook, record_from_mapping
 
 
@@ -358,6 +359,103 @@ def add_drop_off(record: BookRecord) -> dict[str, str]:
         }
     )
     return {"book_id": book_id, "copy_id": copy_ref.id}
+
+
+def add_manual_drop_off(title: str, authors: list[str]) -> dict[str, str]:
+    """Create or reuse a student-entered book and add one available copy.
+
+    Parameters:
+        title: Title typed by the student.
+        authors: Author names typed by the student.
+
+    Returns:
+        Dict with book_id and copy_id of the new drop-off.
+    """
+    client = get_client()
+    book_id = find_book_by_title_author(title, authors)
+    if book_id is None:
+        book_ref = client.collection(COLLECTION_BOOKS).document()
+        book_id = book_ref.id
+        book_ref.set(
+            {
+                "isbn": None,
+                "title": title,
+                "authors": authors,
+                "cover_url": None,
+                "openlibrary_id": None,
+                "subjects": [],
+                "publish_year": None,
+                "source": "manual",
+                "hidden": False,
+                "created_at": _now(),
+            }
+        )
+    copy_ref = client.collection(COLLECTION_COPIES).document()
+    copy_ref.set(
+        {
+            "book_id": book_id,
+            "status": STATUS_AVAILABLE,
+            "dropped_off_at": _now(),
+            "taken_at": None,
+        }
+    )
+    client.collection(COLLECTION_EVENTS).document().set(
+        {
+            "type": "drop_off",
+            "book_id": book_id,
+            "copy_id": copy_ref.id,
+            "created_at": _now(),
+        }
+    )
+    return {"book_id": book_id, "copy_id": copy_ref.id}
+
+
+def get_cover_jpeg(book_id: str) -> bytes | None:
+    """Return stored cover JPEG bytes for a catalog book.
+
+    Parameters:
+        book_id: Firestore books document id.
+
+    Returns:
+        JPEG bytes, or None when the book or cover is missing.
+    """
+    client = get_client()
+    snapshot = client.collection(COLLECTION_BOOKS).document(book_id).get()
+    if not snapshot.exists:
+        return None
+    data = snapshot.to_dict() or {}
+    if data.get("hidden"):
+        return None
+    cover = data.get("cover_jpeg")
+    if cover is None:
+        return None
+    if isinstance(cover, bytes):
+        return cover
+    return bytes(cover)
+
+
+def take_available_copy_by_isbn(raw_isbn: str) -> dict[str, str] | None:
+    """Remove one available copy that matches a scanned ISBN.
+
+    Parameters:
+        raw_isbn: ISBN-10, ISBN-13, or barcode text.
+
+    Returns:
+        Dict with book_id, copy_id, and title, or None if nothing is on the shelf.
+    """
+    isbn = normalize_isbn(raw_isbn)
+    if isbn is None:
+        return None
+    book_id = find_book_by_isbn(isbn)
+    if book_id is None:
+        return None
+    book = get_book(book_id)
+    if book is None:
+        return None
+    copy_id = take_available_copy(book_id)
+    if copy_id is None:
+        return None
+    return {"book_id": book_id, "copy_id": copy_id, "title": book["title"]}
 
 
 def delete_book_and_copies(book_id: str) -> None:
