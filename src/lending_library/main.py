@@ -30,7 +30,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from lending_library import firebase_db
-from lending_library.catalog_lookup import lookup_by_isbn, lookup_by_search
+from lending_library.catalog_lookup import lookup_by_isbn, lookup_by_search, lookup_from_ocr
 from lending_library.config import PACKAGE_DIR, settings
 from lending_library.models import authors_display, record_from_mapping
 from lending_library.ocr_text import parse_ocr_text
@@ -308,7 +308,7 @@ def api_lookup_ocr(body: OcrLookupBody) -> JSONResponse:
         JSON `{ok, parse, books}` with the guessed title/author and matches.
     """
     parsed = parse_ocr_text(body.text)
-    if not parsed["query"]:
+    if not parsed["query"] and not parsed["titles"]:
         return JSONResponse(
             {
                 "ok": False,
@@ -317,12 +317,7 @@ def api_lookup_ocr(body: OcrLookupBody) -> JSONResponse:
                 "error": "The cover photo did not yield a readable title.",
             }
         )
-    records = lookup_by_search(
-        query=parsed["query"],
-        title=parsed["title"],
-        author=parsed["author"],
-        limit=5,
-    )
+    records = lookup_from_ocr(parsed, raw_text=body.text, limit=8)
     return JSONResponse({"ok": bool(records), "parse": parsed, "books": records})
 
 

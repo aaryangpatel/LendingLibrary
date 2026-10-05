@@ -8,8 +8,9 @@ Usage:
 """
 
 from lending_library import google_books, openlibrary
-from lending_library.isbn import normalize_isbn
+from lending_library.isbn import find_isbn_in_text, normalize_isbn
 from lending_library.models import BookRecord
+from lending_library.ocr_text import OcrParse
 
 
 def lookup_by_isbn(raw_isbn: str) -> BookRecord | None:
@@ -74,4 +75,88 @@ def lookup_by_search(
         merged.append(record)
         if len(merged) >= limit:
             break
+    return merged
+
+
+def _record_key(record: BookRecord) -> str:
+    """Build a dedupe key for a lookup result.
+
+    Parameters:
+        record: Normalized book record.
+
+    Returns:
+        ISBN when present, otherwise title plus first author.
+    """
+    if record["isbn"]:
+        return record["isbn"]
+    author = ""
+    if record["authors"]:
+        author = record["authors"][0].casefold()
+    return record["title"].casefold() + "|" + author
+
+
+def lookup_from_ocr(parsed: OcrParse, raw_text: str = "", limit: int = 8) -> list[BookRecord]:
+    """Build a ranked list of likely titles from cover OCR.
+
+    Tries ISBN text if present, then title plus author, then each extra
+    OCR title line, then a free-text query. Duplicate editions are skipped.
+
+    Parameters:
+        parsed: Structured OCR guesses from parse_ocr_text.
+        raw_text: Original Tesseract dump, used to hunt for a printed ISBN.
+        limit: Maximum number of options to return.
+
+    Returns:
+        Deduplicated BookRecord list for the student to choose from.
+    """
+    merged: list[BookRecord] = []
+    seen: set[str] = set()
+
+    def add(records: list[BookRecord]) -> bool:
+        """Append unseen records until the limit is reached.
+
+        Parameters:
+            records: Lookup hits to merge.
+
+        Returns:
+            True when merged is already at the limit.
+        """
+        for record in records:
+            key = _record_key(record)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(record)
+            if len(merged) >= limit:
+                return True
+        return False
+
+    isbn = find_isbn_in_text(raw_text)
+    if isbn is None:
+        isbn = find_isbn_in_text(parsed["query"])
+    if isbn is not None:
+        exact = lookup_by_isbn(isbn)
+        if exact is not None and add([exact]):
+            return merged
+
+    searches: list[dict[str, str]] = []
+    if parsed["title"] and parsed["author"]:
+        searches.append({"title": parsed["title"], "author": parsed["author"]})
+    if parsed["title"]:
+        searches.append({"title": parsed["title"]})
+    for extra_title in parsed["titles"]:
+        if extra_title and extra_title != parsed["title"]:
+            searches.append({"title": extra_title})
+    if parsed["query"]:
+        searches.append({"query": parsed["query"]})
+
+    for search in searches:
+        hits = lookup_by_search(
+            query=search.get("query", ""),
+            title=search.get("title", ""),
+            author=search.get("author", ""),
+            limit=5,
+        )
+        if add(hits):
+            return merged
     return merged

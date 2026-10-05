@@ -1,4 +1,4 @@
-"""Turn noisy cover-OCR text into a title/author search query.
+"""Turn noisy cover-OCR text into title guesses for catalog search.
 
 Usage:
     from lending_library.ocr_text import parse_ocr_text
@@ -38,11 +38,12 @@ LETTER_RE = re.compile(r"[A-Za-z]")
 
 
 class OcrParse(TypedDict):
-    """Structured guess extracted from cover OCR."""
+    """Structured guesses extracted from cover OCR."""
 
     title: str
     author: str
     query: str
+    titles: list[str]
 
 
 def _is_noise_line(line: str) -> bool:
@@ -67,14 +68,15 @@ def _is_noise_line(line: str) -> bool:
 
 
 def parse_ocr_text(raw_text: str) -> OcrParse:
-    """Extract a title guess and optional author from Tesseract output.
+    """Extract title guesses and an optional author from Tesseract output.
 
     Parameters:
         raw_text: Full OCR dump from a front-cover photograph.
 
     Returns:
-        OcrParse with title, author, and a combined query string. Empty
-        strings mean OCR did not yield a usable line.
+        OcrParse with a primary title, extra title lines for search, author,
+        and a combined query string. Empty strings mean OCR did not yield a
+        usable line.
     """
     lines = []
     for raw_line in raw_text.splitlines():
@@ -99,9 +101,18 @@ def parse_ocr_text(raw_text: str) -> OcrParse:
         second = remaining[1]
         if len(second.split()) <= 5 and len(second) <= 40:
             author = second
+    titles: list[str] = []
+    for line in remaining[:6]:
+        if line not in titles:
+            titles.append(line)
+    if len(remaining) >= 2:
+        joined = " ".join(remaining[:2])
+        if joined not in titles and len(joined) <= 80:
+            titles.append(joined)
     query_parts = [part for part in (title, author) if part]
     return OcrParse(
         title=title,
         author=author,
         query=" ".join(query_parts),
+        titles=titles,
     )

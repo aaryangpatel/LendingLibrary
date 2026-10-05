@@ -129,6 +129,30 @@ def normalize_isbn(raw: str) -> str | None:
     return None
 
 
+ISBN13_IN_TEXT = re.compile(r"97[89](?:[\s-]*\d){10}")
+ISBN10_IN_TEXT = re.compile(r"\b(?:\d[\s-]*){9}[\dXx]\b")
+
+
+def find_isbn_in_text(raw: str) -> str | None:
+    """Find the first valid ISBN embedded in OCR or typed text.
+
+    Parameters:
+        raw: Free text that may contain a hyphenated or spaced ISBN.
+
+    Returns:
+        Normalized ISBN-13, or None if none is present.
+    """
+    for match in ISBN13_IN_TEXT.finditer(raw):
+        normalized = normalize_isbn(match.group(0))
+        if normalized is not None:
+            return normalized
+    for match in ISBN10_IN_TEXT.finditer(raw):
+        normalized = normalize_isbn(match.group(0))
+        if normalized is not None:
+            return normalized
+    return None
+
+
 def pick_preferred_isbn(candidates: list[str]) -> str | None:
     """Choose the best ISBN-13 from a list of identifiers.
 

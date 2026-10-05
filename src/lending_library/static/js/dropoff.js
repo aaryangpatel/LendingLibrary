@@ -190,8 +190,8 @@ async function lookupSearch(params, statusNode) {
     renderCandidates([], "No match found");
     return;
   }
-  setStatus(statusNode, "Choose the correct title.");
-  renderCandidates(payload.books, "Choose the correct title");
+  setStatus(statusNode, "Choose the matching title below.");
+  renderCandidates(payload.books, "Choose the matching title");
 }
 
 /**
@@ -296,7 +296,7 @@ async function recognizeCover(file) {
     const guessed = payload.parse && payload.parse.title ? ` Read “${payload.parse.title}”.` : "";
     setStatus(
       ocrStatus,
-      (payload.error || "Could not match that cover.") + guessed + " Type the title instead."
+      (payload.error || "No catalog matches for that cover.") + guessed + " Type the title instead, or try another photo."
     );
     showPanel("manual");
     if (payload.parse && payload.parse.title) {
@@ -307,8 +307,10 @@ async function recognizeCover(file) {
     }
     return;
   }
-  setStatus(ocrStatus, "Choose the correct title.");
-  renderCandidates(payload.books, "Choose the correct title");
+  const count = payload.books.length;
+  setStatus(ocrStatus, `Showing ${count} possible title${count === 1 ? "" : "s"}. Select the correct one.`);
+  renderCandidates(payload.books, "Choose the matching title");
+  resultsRoot.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 document.querySelectorAll(".method-tab").forEach((tab) => {

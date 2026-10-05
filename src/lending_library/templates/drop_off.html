@@ -37,7 +37,10 @@
     </div>
 
     <div class="intake-panel" id="panel-cover" data-panel="cover" hidden>
-      <p class="panel-lead">Take a clear photo of the front cover, then choose the correct title.</p>
+      <p class="panel-lead">
+        Take a clear photo of the front cover. The site will list the closest title
+        matches so you can pick the right one.
+      </p>
       <label class="file-label" for="cover-input">
         <span>Take or upload cover photo</span>
         <input id="cover-input" type="file" accept="image/*" capture="environment" />
@@ -71,5 +74,5 @@
 {% block scripts %}
   <script src="https://unpkg.com/@zxing/library@0.21.3"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="/static/js/dropoff.js"></script>
+  <script src="/static/js/dropoff.js?v=2"></script>
 {% endblock %}
