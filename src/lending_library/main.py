@@ -8,13 +8,12 @@ Usage:
 Pages:
     GET  /              catalog
     GET  /pickup        available titles
-    GET  /drop-off      barcode, OCR, and manual intake
+    GET  /drop-off      barcode and manual intake
     GET  /book/{id}     detail, pickup, staff hide
 
 JSON API:
     GET  /api/lookup/isbn/{isbn}
     GET  /api/lookup/search
-    POST /api/lookup/ocr
     POST /api/drop-off
     POST /api/books/{id}/pickup
     POST /api/books/{id}/hide
@@ -30,10 +29,9 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from lending_library import firebase_db
-from lending_library.catalog_lookup import lookup_by_isbn, lookup_by_search, lookup_from_ocr
+from lending_library.catalog_lookup import lookup_by_isbn, lookup_by_search
 from lending_library.config import PACKAGE_DIR, settings
 from lending_library.models import authors_display, record_from_mapping
-from lending_library.ocr_text import parse_ocr_text
 
 
 app = FastAPI(title="Exeter Lending Library", version="0.1.0")
@@ -44,16 +42,6 @@ app.mount(
     StaticFiles(directory=str(PACKAGE_DIR / "static")),
     name="static",
 )
-
-
-class OcrLookupBody(BaseModel):
-    """JSON body for cover-OCR lookup.
-
-    Parameters:
-        text: Raw Tesseract output from a front-cover photograph.
-    """
-
-    text: str = Field(min_length=1, max_length=8000)
 
 
 class DropOffBody(BaseModel):
@@ -222,7 +210,7 @@ def pickup_page(request: Request, q: str = "") -> HTMLResponse:
 
 @app.get("/drop-off", response_class=HTMLResponse)
 def drop_off_page(request: Request) -> HTMLResponse:
-    """Render the camera, OCR, and manual drop-off page.
+    """Render the barcode camera and manual drop-off page.
 
     Parameters:
         request: Incoming request.
@@ -280,6 +268,7 @@ def api_lookup_search(
     q: str = "",
     title: str = "",
     author: str = "",
+    offset: int = 0,
 ) -> JSONResponse:
     """Search bibliographic APIs for drop-off candidate cards.
 
@@ -287,38 +276,20 @@ def api_lookup_search(
         q: Free-text query.
         title: Title words.
         author: Author words.
+        offset: Number of merged matches to skip, used by Load more.
 
     Returns:
-        JSON `{ok, books}` with up to five BookRecord objects.
+        JSON `{ok, books, has_more}` with up to five BookRecord objects.
     """
     if not q.strip() and not title.strip():
-        return JSONResponse({"ok": False, "books": [], "error": "Enter a title or ISBN."})
-    records = lookup_by_search(query=q, title=title, author=author, limit=5)
-    return JSONResponse({"ok": True, "books": records})
-
-
-@app.post("/api/lookup/ocr")
-def api_lookup_ocr(body: OcrLookupBody) -> JSONResponse:
-    """Parse cover OCR text, then search bibliographic APIs.
-
-    Parameters:
-        body: Raw Tesseract text from the browser.
-
-    Returns:
-        JSON `{ok, parse, books}` with the guessed title/author and matches.
-    """
-    parsed = parse_ocr_text(body.text)
-    if not parsed["query"] and not parsed["titles"]:
         return JSONResponse(
-            {
-                "ok": False,
-                "parse": parsed,
-                "books": [],
-                "error": "The cover photo did not yield a readable title.",
-            }
+            {"ok": False, "books": [], "has_more": False, "error": "Enter a title or ISBN."}
         )
-    records = lookup_from_ocr(parsed, raw_text=body.text, limit=8)
-    return JSONResponse({"ok": bool(records), "parse": parsed, "books": records})
+    start = max(offset, 0)
+    records, has_more = lookup_by_search(
+        query=q, title=title, author=author, limit=5, offset=start
+    )
+    return JSONResponse({"ok": True, "books": records, "has_more": has_more})
 
 
 @app.post("/api/drop-off")
@@ -343,13 +314,14 @@ def api_drop_off(body: DropOffBody) -> JSONResponse:
 
 @app.post("/api/books/{book_id}/pickup")
 def api_pickup(book_id: str) -> JSONResponse:
-    """Mark one available copy as taken.
+    """Remove one available copy from Firestore.
 
     Parameters:
         book_id: Firestore books document id.
 
     Returns:
-        JSON `{ok, copy_id}` or 409 when no copy remains.
+        JSON `{ok, copy_id}` or 409 when no copy remains. The book document
+        is deleted when that was the last available copy.
     """
     copy_id = firebase_db.take_available_copy(book_id)
     if copy_id is None:
@@ -392,16 +364,16 @@ def api_hide(book_id: str, body: StaffHideBody) -> JSONResponse:
 
 @app.post("/book/{book_id}/pickup")
 def form_pickup(book_id: str) -> RedirectResponse:
-    """Handle the HTML pickup form and return to the book page.
+    """Handle the HTML pickup form and return to the catalog.
 
     Parameters:
         book_id: Firestore books document id.
 
     Returns:
-        Redirect to the book page.
+        Redirect to the catalog after the copy is removed.
     """
     firebase_db.take_available_copy(book_id)
-    return RedirectResponse(url=f"/book/{book_id}", status_code=303)
+    return RedirectResponse(url="/", status_code=303)
 
 
 @app.post("/book/{book_id}/hide")

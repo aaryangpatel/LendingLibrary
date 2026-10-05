@@ -5,8 +5,7 @@
     <h1>Drop off a book</h1>
     <p>
       Point the camera at the barcode on the back of the book. If there is no barcode,
-      photograph the cover or type the title. Confirm the match before the book is added
-      to the catalog.
+      type the title or ISBN. Confirm the match before the book is added to the catalog.
     </p>
   </section>
 
@@ -14,9 +13,6 @@
     <div class="intake-methods" role="tablist" aria-label="Drop-off methods">
       <button type="button" class="method-tab is-active" data-panel="scan" id="tab-scan">
         Scan barcode
-      </button>
-      <button type="button" class="method-tab" data-panel="cover" id="tab-cover">
-        Photograph cover
       </button>
       <button type="button" class="method-tab" data-panel="manual" id="tab-manual">
         Type title or ISBN
@@ -34,19 +30,6 @@
         <button type="button" class="btn btn-outline" id="stop-scan" hidden>Stop camera</button>
       </div>
       <p class="status-line" id="scan-status"></p>
-    </div>
-
-    <div class="intake-panel" id="panel-cover" data-panel="cover" hidden>
-      <p class="panel-lead">
-        Take a clear photo of the front cover. The site will list the closest title
-        matches so you can pick the right one.
-      </p>
-      <label class="file-label" for="cover-input">
-        <span>Take or upload cover photo</span>
-        <input id="cover-input" type="file" accept="image/*" capture="environment" />
-      </label>
-      <img id="cover-preview" class="cover-preview" alt="Selected cover" hidden />
-      <p class="status-line" id="ocr-status"></p>
     </div>
 
     <div class="intake-panel" id="panel-manual" data-panel="manual" hidden>
@@ -73,6 +56,5 @@
 {% endblock %}
 {% block scripts %}
   <script src="https://unpkg.com/@zxing/library@0.21.3"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="/static/js/dropoff.js?v=2"></script>
+  <script src="/static/js/dropoff.js?v=3"></script>
 {% endblock %}

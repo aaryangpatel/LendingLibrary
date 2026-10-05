@@ -553,22 +553,8 @@ main {
   color: var(--muted);
 }
 
-.file-label {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  font-family: var(--sans);
-  font-weight: 600;
-}
-
-.file-label input {
-  font-weight: 400;
-}
-
-.cover-preview {
+.lookup-more {
   margin-top: 1rem;
-  max-width: 220px;
-  border: 1px solid var(--line);
 }
 
 .manual-form {
